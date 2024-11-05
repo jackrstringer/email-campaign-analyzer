@@ -25,10 +25,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'Error parsing form data' })
       }
 
-      const imageFile = files.image as formidable.File
+      const imageFile = Array.isArray(files.image) ? files.image[0] : files.image
+
+      const imageBuffer = imageFile && fs.readFileSync(imageFile.filepath)
+
+      if (!imageBuffer) {
+        return res.status(400).json({ error: 'No image file uploaded' })
+      }
+
       const brief = fields.brief as string
 
-      const imageBuffer = fs.readFileSync(imageFile.filepath)
       const base64Image = imageBuffer.toString('base64')
 
       const response = await openai.chat.completions.create({
