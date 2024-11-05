@@ -28,12 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     })
 
-    const imageFile = files.image
+    const imageFile = files.image as formidable.File | formidable.File[] | undefined
     if (!imageFile || Array.isArray(imageFile)) {
       return res.status(400).json({ error: 'Invalid file upload' })
     }
 
-    const brief = fields.brief
+    const brief = fields.brief as string | string[] | undefined
     if (!brief || Array.isArray(brief)) {
       return res.status(400).json({ error: 'Invalid brief' })
     }
