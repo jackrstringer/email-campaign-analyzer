@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Parse the form data with proper typing
     const { fields, files } = await new Promise<{ fields: Fields; files: Files }>((resolve, reject) => {
       const form = new IncomingForm()
       form.parse(req, (err, fields, files) => {
@@ -27,12 +28,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     })
 
-    const imageFile = files.image?.[0]
+    // Safely access the image file with optional chaining
+    const imageFile = Array.isArray(files.image) ? files.image[0] : files.image
     if (!imageFile) {
       return res.status(400).json({ error: 'No image file uploaded' })
     }
 
-    const brief = fields.brief?.[0]
+    // Safely access the brief with optional chaining
+    const brief = Array.isArray(fields.brief) ? fields.brief[0] : fields.brief
     if (!brief) {
       return res.status(400).json({ error: 'No brief provided' })
     }
@@ -46,8 +49,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           role: "user",
           content: [
-            { type: "text", text: `Analyze this email campaign image and provide: 1) Design Analysis, 2) Copy Analysis, and 3) Campaign Outline. For the Campaign Outline, use the following structure: Section Name (e.g., Hero Section), Header:, Subheader:, Copy Blurb:, CTA:. The campaign brief is: ${brief}` },
-            { type: "image_url", image_url: `data:image/jpeg;base64,${base64Image}` }
+            { 
+              type: "text", 
+              text: `Analyze this email campaign image and provide: 1) Design Analysis, 2) Copy Analysis, and 3) Campaign Outline. For the Campaign Outline, use the following structure: Section Name (e.g., Hero Section), Header:, Subheader:, Copy Blurb:, CTA:. The campaign brief is: ${brief}` 
+            },
+            {
+              type: "image_url",
+              image_url: `data:image/jpeg;base64,${base64Image}`
+            }
           ],
         },
       ],
@@ -58,11 +67,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!result) {
       throw new Error('No result from OpenAI')
     }
+
     const [designAnalysis, copyAnalysis, campaignOutline] = result.split('\n\n')
 
-    res.status(200).json({ designAnalysis, copyAnalysis, campaignOutline })
+    // Clean up the temporary file
+    await fs.unlink(imageFile.filepath)
+
+    return res.status(200).json({ designAnalysis, copyAnalysis, campaignOutline })
   } catch (error) {
     console.error('Error:', error)
-    res.status(500).json({ error: 'An error occurred while processing the request' })
+    return res.status(500).json({ error: 'An error occurred while processing the request' })
   }
 }
