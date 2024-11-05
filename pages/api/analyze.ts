@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import formidable, { File } from 'formidable'
+import formidable from 'formidable'
 import fs from 'fs'
 import OpenAI from 'openai'
 
@@ -13,6 +13,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+interface FormidableFile extends formidable.File {
+  filepath: string;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -20,19 +24,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const form = new formidable.IncomingForm()
-    form.parse(req, async (err, fields, files) => {
+    form.parse(req, async (err, fields, files: formidable.Files) => {
       if (err) {
         return res.status(500).json({ error: 'Error parsing form data' })
       }
 
-      const imageFile = Array.isArray(files.image) ? files.image[0] : files.image
-      if (!imageFile) {
-        return res.status(400).json({ error: 'No image file uploaded' })
+      const uploadedFile = files.image
+      if (!uploadedFile || Array.isArray(uploadedFile)) {
+        return res.status(400).json({ error: 'Invalid file upload' })
+      }
+
+      const imageFile = uploadedFile as FormidableFile
+      const brief = fields.brief
+
+      if (typeof brief !== 'string') {
+        return res.status(400).json({ error: 'Invalid brief' })
       }
 
       const imageBuffer = fs.readFileSync(imageFile.filepath)
-      const brief = fields.brief as string
-
       const base64Image = imageBuffer.toString('base64')
 
       const response = await openai.chat.completions.create({
