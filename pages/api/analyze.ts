@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
+import formidable, { File } from 'formidable'
 import fs from 'fs'
 import OpenAI from 'openai'
 
@@ -26,13 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const imageFile = Array.isArray(files.image) ? files.image[0] : files.image
-
-      const imageBuffer = imageFile && fs.readFileSync(imageFile.filepath)
-
-      if (!imageBuffer) {
+      if (!imageFile) {
         return res.status(400).json({ error: 'No image file uploaded' })
       }
 
+      const imageBuffer = fs.readFileSync(imageFile.filepath)
       const brief = fields.brief as string
 
       const base64Image = imageBuffer.toString('base64')
